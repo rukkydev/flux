@@ -1,0 +1,25 @@
+# Dependencies
+/vendor/
+
+# Environment
+.env
+
+# Storage (keep structure, ignore contents)
+/storage/logs/*.log
+/storage/cache/**/*.cache
+/storage/sessions/*
+/storage/uploads/*
+!/storage/**/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# PHP
+*.phar

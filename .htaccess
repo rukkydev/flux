@@ -1,0 +1,26 @@
+Options -MultiViews -Indexes
+RewriteEngine On
+RewriteBase /fluxphp/
+
+# ── Handle Authorization header ───────────
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# ── Block sensitive files ─────────────────
+RewriteRule ^\.env - [F,L]
+RewriteRule ^composer\.(json|lock) - [F,L]
+RewriteRule ^bootstrap/ - [F,L]
+RewriteRule ^core/ - [F,L]
+RewriteRule ^config/ - [F,L]
+RewriteRule ^storage/ - [F,L]
+RewriteRule ^websocket/ - [F,L]
+RewriteRule ^modules/ - [F,L]
+RewriteRule ^database/ - [F,L]
+
+# ── Allow public/ assets to pass through ──
+RewriteRule ^public/ - [L]
+
+# ── Everything else → front controller ───
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L]
