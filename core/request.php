@@ -20,9 +20,18 @@ function request(string $key = null, mixed $default = null): mixed
 
 function request_method(): string
 {
-    // Support method spoofing via _method field
-    $method = $_POST['_method'] ?? $_SERVER['REQUEST_METHOD'] ?? 'GET';
-    return strtoupper($method);
+    static $allowed = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
+    $method = strtoupper(trim(
+        $_POST['_method'] ?? $_SERVER['REQUEST_METHOD'] ?? 'GET'
+    ));
+
+    // Fix #10: only allow whitelisted methods
+    if (!in_array($method, $allowed, true)) {
+        return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+    }
+
+    return $method;
 }
 
 function request_is(string $method): bool
@@ -62,14 +71,6 @@ function request_is_api(): bool
 {
     $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
     return str_contains($accept, 'application/json') || request_is_ajax();
-}
-
-function request_ip(): string
-{
-    return $_SERVER['HTTP_X_FORWARDED_FOR']
-        ?? $_SERVER['HTTP_CLIENT_IP']
-        ?? $_SERVER['REMOTE_ADDR']
-        ?? '0.0.0.0';
 }
 
 function request_header(string $key, string $default = ''): string

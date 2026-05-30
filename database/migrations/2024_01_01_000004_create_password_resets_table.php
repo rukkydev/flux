@@ -1,20 +1,13 @@
 <?php
 
-// ─────────────────────────────────────────
-//  Migration: 2024_01_01_000003_create_password_resets_table.php
-//  Functions: migration_create_password_resets_table_up() / migration_create_password_resets_table_down()
-// ─────────────────────────────────────────
-
 function migration_create_password_resets_table_up(): void
 {
-
     db_unprepared("
         CREATE TABLE IF NOT EXISTS `password_resets` (
             `email`      VARCHAR(255) NOT NULL,
             `token`      VARCHAR(64)  NOT NULL,
             `expires_at` DATETIME     NOT NULL,
             `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`email`),
             KEY `password_resets_token_index` (`token`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

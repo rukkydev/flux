@@ -230,20 +230,6 @@ function e(string $value): string
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-function csrf_token(): string
-{
-    if (empty($_SESSION['_csrf_token'])) {
-        $_SESSION['_csrf_token'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['_csrf_token'];
-}
-
-function csrf_field(): string
-{
-    return '<input type="hidden" name="_csrf_token" value="' . e(csrf_token()) . '">';
-}
-
-
 // ── Flash / Session Helpers ───────────────
 
 function flash(string $key, mixed $value = null): mixed

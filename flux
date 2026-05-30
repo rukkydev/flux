@@ -162,6 +162,7 @@ function cmd_help(): void
     cli_line('    make:layout <Name>      Create a new layout file');
     cli_line('    make:component <Name>   Create a new UI component');
     cli_line('    make:event <Name>       Create a new event listener');
+    cli_line('    make:admin              Create a new admin account (interactive)');
     cli_line();
 
     cli_out('  Database:', 'yellow');
@@ -1601,7 +1602,21 @@ function cmd_queue_work(): void
     cli_info("Press Ctrl+C to stop.");
     cli_line();
 
-    while (true) {
+    // Graceful shutdown via stop file (cross-platform, works on Windows too)
+    $stopFile = storage_path('queue/.stop');
+    @unlink($stopFile); // Clear any leftover stop file
+
+    // Also support pcntl signals on Linux/Mac
+    if (function_exists('pcntl_signal')) {
+        pcntl_signal(SIGTERM, function() use ($stopFile) { touch($stopFile); });
+        pcntl_signal(SIGINT,  function() use ($stopFile) { touch($stopFile); });
+    }
+
+    while (!file_exists($stopFile)) {
+        if (function_exists('pcntl_signal_dispatch')) {
+            pcntl_signal_dispatch();
+        }
+
         $job = queue_next($queue);
 
         if (!$job) {
@@ -1626,6 +1641,12 @@ function cmd_queue_work(): void
             cli_info("Processed {$count} job(s). Stopping.");
             break;
         }
+    }
+
+    if (file_exists($stopFile)) {
+        @unlink($stopFile);
+        cli_line();
+        cli_success("Queue worker stopped gracefully.");
     }
     cli_line();
 }
@@ -1740,6 +1761,51 @@ function cmd_optimize(): void
     cli_line();
 }
 
+
+// ─────────────────────────────────────────────────────
+//  COMMAND: make:admin
+// ─────────────────────────────────────────────────────
+
+function cmd_make_admin(): void
+{
+    cli_header('Create Admin Account');
+
+    $name     = cli_ask('Admin name');
+    $email    = cli_ask('Admin email');
+    $password = cli_ask('Password (min 8 chars)');
+
+    if (!$name || !$email || !$password) {
+        cli_error('All fields are required.');
+        return;
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        cli_error('Invalid email address.');
+        return;
+    }
+
+    if (strlen($password) < 8) {
+        cli_error('Password must be at least 8 characters.');
+        return;
+    }
+
+    if (db_exists('admins', ['email' => $email])) {
+        cli_error("Admin with email [{$email}] already exists.");
+        return;
+    }
+
+    $id = admin_create($name, $email, $password);
+
+    cli_line();
+    cli_success("Admin account created.");
+    cli_info("Name:  {$name}");
+    cli_info("Email: {$email}");
+    cli_info("ID:    {$id}");
+    cli_line();
+    cli_warn("Login at: /admin/login");
+    cli_line();
+}
+
 // ─────────────────────────────────────────────────────
 //  COMMAND DISPATCHER
 // ─────────────────────────────────────────────────────
@@ -1773,6 +1839,7 @@ match ($command) {
     'seed'                  => cmd_seed(),
     'module:list'           => cmd_module_list(),
     'storage:link'          => cmd_storage_link(),
+    'make:admin'            => cmd_make_admin(),
     'queue:work'            => cmd_queue_work(),
     'queue:status'          => cmd_queue_status(),
     'queue:failed'          => cmd_queue_failed(),

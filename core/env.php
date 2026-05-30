@@ -33,17 +33,21 @@ function env_load(string $path): void
         $key   = trim($key);
         $value = trim($value);
 
-        // Strip inline comments
-        if (str_contains($value, ' #')) {
-            $value = trim(explode(' #', $value, 2)[0]);
-        }
-
-        // Strip surrounding quotes
-        if (
+        // Strip surrounding quotes FIRST
+        $isQuoted = (
             (str_starts_with($value, '"') && str_ends_with($value, '"')) ||
             (str_starts_with($value, "'") && str_ends_with($value, "'"))
-        ) {
+        );
+
+        if ($isQuoted) {
+            // Quoted value — preserve everything inside, no comment stripping
             $value = substr($value, 1, -1);
+        } else {
+            // Unquoted — strip inline comments (space + #)
+            // Fix #9: only strip if NOT inside quotes
+            if (str_contains($value, ' #')) {
+                $value = trim(explode(' #', $value, 2)[0]);
+            }
         }
 
         // Normalize booleans and null

@@ -31,6 +31,7 @@ $coreFiles = [
     'core/database.php',
     'core/validation.php',
     'core/mail.php',
+    'core/filesystem.php',
     'core/api.php',
     'core/queue.php',
     'core/modules.php',

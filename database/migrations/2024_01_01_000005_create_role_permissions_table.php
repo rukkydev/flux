@@ -1,13 +1,7 @@
 <?php
 
-// ─────────────────────────────────────────
-//  Migration: 2024_01_01_000004_create_role_permissions_table.php
-//  Functions: migration_create_role_permissions_table_up() / migration_create_role_permissions_table_down()
-// ─────────────────────────────────────────
-
 function migration_create_role_permissions_table_up(): void
 {
-
     db_unprepared("
         CREATE TABLE IF NOT EXISTS `role_permissions` (
             `id`      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

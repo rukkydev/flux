@@ -425,8 +425,8 @@ function db_paginate(
         'per_page'     => $perPage,
         'current_page' => $page,
         'last_page'    => max(1, (int) ceil($total / $perPage)),
-        'from'         => $total > 0 ? $offset + 1 : 0,
-        'to'           => min($offset + $perPage, $total),
+        'from'         => $total > 0 ? $offset + 1 : null,
+        'to'           => $total > 0 ? min($offset + $perPage, $total) : null,
         'has_more'     => $page < (int) ceil($total / $perPage),
     ];
 }
@@ -713,8 +713,8 @@ class FluxQueryBuilder
             'per_page'     => $perPage,
             'current_page' => $page,
             'last_page'    => max(1, (int) ceil($total / $perPage)),
-            'from'         => $total > 0 ? $offset + 1 : 0,
-            'to'           => min($offset + $perPage, $total),
+            'from'         => $total > 0 ? $offset + 1 : null,
+            'to'           => $total > 0 ? min($offset + $perPage, $total) : null,
             'has_more'     => $page < (int) ceil($total / $perPage),
         ];
     }

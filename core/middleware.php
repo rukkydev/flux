@@ -77,20 +77,30 @@ middleware_register('api.auth', function () {
         response_unauthorized('API token required.');
     }
 
-    $record = db_find_where('api_tokens', ['token' => hash('sha256', $token)]);
+    $hashedToken = hash('sha256', $token);
+    $record      = db_find_where('api_tokens', ['token' => $hashedToken]);
 
-    if (!$record) {
+    // Fix #5: constant-time comparison to prevent timing attacks
+    if (!$record || !hash_equals($record['token'], $hashedToken)) {
         response_unauthorized('Invalid API token.');
     }
 
-    if (!empty($record['expires_at']) && strtotime($record['expires_at']) < time()) {
-        response_unauthorized('API token expired.');
+    // Check revoked
+    if (!empty($record['revoked_at'])) {
+        response_unauthorized('API token has been revoked.');
     }
 
-    // Update last used
-    db_update('api_tokens', $record['id'], ['last_used' => date('Y-m-d H:i:s')]);
+    // Check expiry
+    if (!empty($record['expires_at']) && strtotime($record['expires_at']) < time()) {
+        response_unauthorized('API token has expired.');
+    }
 
-    // Make user ID available
+    // Update last_used at most once per minute (avoid write-per-request)
+    $lastUsed = strtotime($record['last_used'] ?? '2000-01-01');
+    if (time() - $lastUsed > 60) {
+        db_update('api_tokens', $record['id'], ['last_used' => date('Y-m-d H:i:s')]);
+    }
+
     $_SERVER['_api_user_id'] = $record['user_id'];
 });
 
