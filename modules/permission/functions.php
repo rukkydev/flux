@@ -16,6 +16,8 @@ function can(string $ability, ?array $resource = null): bool
 {
     if (!auth_check()) return false;
 
+    if (auth_type() === 'admin') return true;
+
     $role = auth_role();
 
     // Admins can do everything

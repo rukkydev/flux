@@ -55,7 +55,7 @@ $errors = validation_errors();
 
         <?php partial('alerts', ['errors' => $errors]) ?>
 
-        <form method="POST" action="<?php url('/forgot-password') ?>">
+        <form method="POST" action="<?= url('/forgot-password') ?>">
             <?= csrf_field() ?>
             <div class="mb-3">
                 <label class="form-label fw-medium">Email address</label>
@@ -76,5 +76,5 @@ $errors = validation_errors();
 </div>
 
 <p class="text-center text-muted small mt-3">
-    <a href="/login" class="text-dark">← Back to login</a>
+    <a href="<?= url('/login') ?>" class="text-dark">← Back to login</a>
 </p>

@@ -111,6 +111,40 @@ function session_regenerate(): void
 
 function session_destroy_flux(): void
 {
+    if (is_cli() || session_status() !== PHP_SESSION_ACTIVE) {
+        return;
+    }
+
+    $params = session_get_cookie_params();
+
     session_flush();
     session_destroy();
+
+    if (!headers_sent()) {
+        setcookie(session_name(), '', [
+            'expires'  => time() - 3600,
+            'path'     => $params['path'] ?? '/',
+            'domain'   => $params['domain'] ?? '',
+            'secure'   => $params['secure'] ?? false,
+            'httponly' => $params['httponly'] ?? true,
+            'samesite' => $params['samesite'] ?? 'Lax',
+        ]);
+    }
+
+    session_write_close();
+    $_SESSION = [];
+    session_name('FLUX_SESSION');
+}
+
+function session_reset_flux(): void
+{
+    if (is_cli()) {
+        return;
+    }
+
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_destroy_flux();
+    }
+
+    session_start_flux();
 }

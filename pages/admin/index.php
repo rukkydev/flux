@@ -5,31 +5,35 @@
 //  Admin Dashboard
 // ─────────────────────────────────────────
 
-title('Admin Dashboard');
+middleware('admin');
+title('Dashboard');
 layout('dashboard');
 
-$totalUsers    = db_count('users');
-$activeUsers   = db_count('users', ['deleted_at' => null]);
-$recentLogins  = db_table('activity_logs')
-    ->where('event', 'auth.login')
-    ->order('created_at', 'DESC')
-    ->limit(5)
-    ->get();
+// Guard against missing tables during fresh setup
+$totalUsers   = db_schema_has_table('users') ? db_count('users') : 0;
+$activeUsers  = db_schema_has_table('users')
+    ? db_table('users')->whereNull('deleted_at')->count() : 0;
 
-$recentUsers = db_table('users')
-    ->whereNull('deleted_at')
-    ->order('created_at', 'DESC')
-    ->limit(5)
-    ->get();
+$recentLogins = db_schema_has_table('activity_logs')
+    ? db_table('activity_logs')->where('event', 'auth.login')
+        ->order('created_at', 'DESC')->limit(5)->get()
+    : [];
+
+$recentUsers = db_schema_has_table('users')
+    ? db_table('users')->whereNull('deleted_at')
+        ->order('created_at', 'DESC')->limit(5)->get()
+    : [];
+
 ?>
-
 <?php section('sidebar') ?>
 <?php component('admin.sidebar') ?>
 <?php end_section() ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Dashboard</h1>
-    <span class="text-muted small">Welcome back, <?= e(session_get('auth.name')) ?></span>
+    <h1 class="mb-0 fs-4 fw-bold">Dashboard</h1>
+    <span class="text-muted small">
+        Welcome back, <?= e(session_get('auth.name', 'Admin')) ?>
+    </span>
 </div>
 
 <!-- Stats -->
@@ -57,9 +61,9 @@ $recentUsers = db_table('users')
     </div>
     <div class="col-md-3">
         <div class="stat-card">
-            <div class="stat-label">Cache Driver</div>
-            <div class="stat-value" style="font-size:1.2rem"><?= ucfirst(cache_driver()) ?></div>
-            <div class="stat-meta"><?= config('app.env') ?> environment</div>
+            <div class="stat-label">Environment</div>
+            <div class="stat-value" style="font-size:1.1rem"><?= ucfirst(config('app.env', 'local')) ?></div>
+            <div class="stat-meta">PHP <?= PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ?></div>
         </div>
     </div>
 </div>
@@ -68,24 +72,26 @@ $recentUsers = db_table('users')
     <!-- Recent Users -->
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">
-                Recent Users
-                <a href="<?= url('/admin/users') ?>" class="btn btn-sm btn-outline-primary ms-auto">View all</a>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Recent Users</span>
+                <a href="<?= url('/admin/users') ?>" class="btn btn-sm btn-outline-primary">View all</a>
             </div>
             <div class="table-responsive">
                 <table class="table mb-0">
-                    <thead><tr><th>Name</th><th>Role</th><th>Joined</th></tr></thead>
+                    <thead>
+                        <tr><th>Name</th><th>Email</th><th>Joined</th></tr>
+                    </thead>
                     <tbody>
                     <?php foreach ($recentUsers as $u): ?>
                         <tr>
-                            <td>
-                                <a href="<?= url('/admin/users/' . $u['id']) ?>"><?= e($u['name']) ?></a>
-                                <div class="small text-muted"><?= e($u['email']) ?></div>
-                            </td>
-                            <td><span class="badge bg-primary"><?= e($u['role']) ?></span></td>
+                            <td class="fw-medium"><?= e($u['name']) ?></td>
+                            <td class="text-muted small"><?= e($u['email']) ?></td>
                             <td class="text-muted small"><?= date('M d', strtotime($u['created_at'])) ?></td>
                         </tr>
                     <?php endforeach ?>
+                    <?php if (empty($recentUsers)): ?>
+                        <tr><td colspan="3" class="text-center text-muted py-3">No users yet.</td></tr>
+                    <?php endif ?>
                     </tbody>
                 </table>
             </div>
@@ -95,10 +101,12 @@ $recentUsers = db_table('users')
     <!-- Recent Activity -->
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">Recent Activity</div>
+            <div class="card-header">Recent Logins</div>
             <div class="table-responsive">
                 <table class="table mb-0">
-                    <thead><tr><th>Event</th><th>IP</th><th>When</th></tr></thead>
+                    <thead>
+                        <tr><th>Event</th><th>IP</th><th>When</th></tr>
+                    </thead>
                     <tbody>
                     <?php foreach ($recentLogins as $log): ?>
                         <tr>

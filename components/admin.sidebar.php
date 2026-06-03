@@ -3,7 +3,6 @@ $current = request_path();
 $nav = [
     ['label' => 'Dashboard', 'href' => '/admin',          'icon' => '⊞'],
     ['label' => 'Users',     'href' => '/admin/users',    'icon' => '👥'],
-    ['label' => 'Activity',  'href' => '/admin/activity', 'icon' => '📋'],
     ['label' => 'Settings',  'href' => '/admin/settings', 'icon' => '⚙'],
 ];
 ?>
@@ -27,5 +26,5 @@ $nav = [
 
 <div class="mt-auto pt-3 border-top border-white border-opacity-10 px-2">
     <div class="small text-white-50 mb-2"><?= e(session_get('auth.name', '')) ?></div>
-    <a href="<?= url('/logout') ?>" class="nav-link text-white-50 small">Sign out</a>
+    <a href="<?= url('/admin/logout') ?>" class="nav-link text-white-50 small">Sign out</a>
 </div>

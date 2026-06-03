@@ -311,9 +311,20 @@ function component(string $name, array $props = []): void
 {
     global $_FLUX_VIEW_DATA;
 
-    $path = base_path('components/' . str_replace('.', '/', $name) . '.php');
+    $candidates = [
+        base_path('components/' . $name . '.php'),
+        base_path('components/' . str_replace('.', '/', $name) . '.php'),
+    ];
 
-    if (!file_exists($path)) {
+    $path = null;
+    foreach ($candidates as $candidate) {
+        if (file_exists($candidate)) {
+            $path = $candidate;
+            break;
+        }
+    }
+
+    if ($path === null) {
         abort(500, "Component not found: {$name}");
     }
 
@@ -407,16 +418,25 @@ function renderer_render(string $pageFile, array $data = []): void
     // Merge shared data + route params + passed data
     $merged = array_merge($_FLUX_VIEW_DATA, route_params(), $data);
 
-    // Capture the page output.
-    // layout(), title(), section(), push() are all called INSIDE the
-    // page file during this capture. We read $_FLUX_LAYOUT AFTER
-    // ob_get_clean() so the page has had a chance to call layout().
+    // ── Step 1: Capture page output ──────────────────
+    // layout(), title(), section(), push() all run INSIDE this buffer.
+    // We MUST read $_FLUX_LAYOUT after ob_get_clean() — the page sets it.
+    // IMPORTANT: use global variables directly — closures don't share
+    // global state the same way as inline code, so we require the file
+    // in the current scope using a simple include wrapper.
     ob_start();
-    extract($merged, EXTR_SKIP);
-    require $fullPath;
+    (static function() use ($fullPath, $merged) {
+        // Bring all renderer globals into scope explicitly
+        global $_FLUX_LAYOUT, $_FLUX_SECTIONS, $_FLUX_SECTION,
+               $_FLUX_STACKS, $_FLUX_STACK_CURRENT,
+               $_FLUX_SLOTS, $_FLUX_SLOT_CURRENT,
+               $_FLUX_PAGE_TITLE, $_FLUX_META, $_FLUX_VIEW_DATA;
+        extract($merged, EXTR_SKIP);
+        require $fullPath;
+    })();
     $_FLUX_PAGE_CONTENT = ob_get_clean();
 
-    // Now $_FLUX_LAYOUT has been set (or not) by the page file
+    // ── Step 2: Wrap in layout if one was set ─────────
     if ($_FLUX_LAYOUT) {
         $layoutPath = base_path('layouts/' . $_FLUX_LAYOUT . '.php');
 
@@ -424,10 +444,18 @@ function renderer_render(string $pageFile, array $data = []): void
             abort(500, "Layout not found: {$_FLUX_LAYOUT}");
         }
 
-        extract($merged, EXTR_SKIP);
-        require $layoutPath;
+        (static function() use ($layoutPath, $merged) {
+            global $_FLUX_LAYOUT, $_FLUX_SECTIONS, $_FLUX_SECTION,
+                   $_FLUX_STACKS, $_FLUX_STACK_CURRENT,
+                   $_FLUX_SLOTS, $_FLUX_SLOT_CURRENT,
+                   $_FLUX_PAGE_TITLE, $_FLUX_META, $_FLUX_VIEW_DATA,
+                   $_FLUX_PAGE_CONTENT;
+            extract($merged, EXTR_SKIP);
+            require $layoutPath;
+        })();
+
     } else {
-        // no_layout() or layout() never called — raw output
+        // no_layout() or layout() never called — output raw
         echo $_FLUX_PAGE_CONTENT;
     }
 }

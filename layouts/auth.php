@@ -18,7 +18,7 @@
     <div class="w-100" style="max-width: 420px">
 
         <div class="text-center mb-4">
-            <a href="/" class="text-decoration-none">
+            <a href="<?= url('/') ?>" class="text-decoration-none">
                 <span class="fs-4 fw-bold text-dark"><?= e(config('app.name', 'FluxPHP')) ?></span>
             </a>
         </div>

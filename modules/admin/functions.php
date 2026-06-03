@@ -36,20 +36,23 @@ function env_update(string $key, string $value): void
 function admin_stats(): array
 {
     return cache_remember('admin.stats', function () {
-        return [
-            'total_users'  => db_count('users'),
-            'active_users' => db_table('users')->whereNull('deleted_at')->count(),
+        $stats = [
+            'total_users'  => 0,
+            'active_users' => 0,
             'failed_jobs'  => count(queue_failed()),
             'queue_jobs'   => array_sum(queue_stats()),
         ];
-    }, 60);
-}
 
-function admin_menu(): array
-{
-    return [
-        ['label' => 'Dashboard', 'icon' => 'fa-solid fa-gauge', 'url' => url('admin.dashboard')],
-        ['label' => 'Users', 'icon' => 'fa-solid fa-users', 'url' => url('admin.users')],
-        ['label' => 'Settings', 'icon' => 'fa-solid fa-cog', 'url' => url('admin.settings')],
-    ];
+        // Guard against missing tables during setup
+        try {
+            if (db_schema_has_table('users')) {
+                $stats['total_users']  = db_count('users');
+                $stats['active_users'] = db_table('users')->whereNull('deleted_at')->count();
+            }
+        } catch (\Throwable $e) {
+            log_warning('admin_stats: could not query users table', ['error' => $e->getMessage()]);
+        }
+
+        return $stats;
+    }, 60);
 }

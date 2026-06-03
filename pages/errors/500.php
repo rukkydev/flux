@@ -10,7 +10,7 @@
     <h1 class="display-1 fw-bold text-muted">500</h1>
     <h2 class="mb-3">Server Error</h2>
     <p class="text-muted">Something went wrong on our end. Please try again later.</p>
-    <a href="/" class="btn btn-dark">Go Home</a>
+    <a href="<?= url('/') ?>" class="btn btn-dark">Go Home</a>
 </div>
 </body>
 </html>

@@ -6,13 +6,13 @@
 
 /* ── Variables ───────────────────────────────────────── */
 :root {
-    /* Primary Purple palette (replaced Biro Blue) */
-    --biro:           #8500eb; /* primary */
-    --biro-dark:      #5b00b5; /* darker */
-    --biro-deeper:    #3a006f; /* deepest */
-    --biro-mid:       #9a3ffc; /* mid / accent */
-    --biro-light:     #F6F0FF; /* light background */
-    --biro-tint:      #FBF7FF; /* faint tint */
+    /* Biro Blue palette */
+    --biro:           #1B3F8B;
+    --biro-dark:      #122B63;
+    --biro-deeper:    #0D1F4A;
+    --biro-mid:       #2E5AC8;
+    --biro-light:     #EEF2FB;
+    --biro-tint:      #F5F7FD;
 
     /* Neutrals */
     --ink:            #111827;
@@ -266,7 +266,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .form-control:focus, .form-select:focus {
     border-color: var(--biro);
-    box-shadow:   0 0 0 3px rgba(133,0,235,.12);
+    box-shadow:   0 0 0 3px rgba(27,63,139,.12);
     outline:      none;
 }
 
@@ -477,3 +477,21 @@ footer strong { color: var(--biro); }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+
+/* ── Navbar avatar ─────────────────────── */
+.navbar-avatar {
+    width: 28px;
+    height: 28px;
+    background: var(--biro-mid);
+    color: #fff;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .6875rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.text-danger-soft { color: rgba(185,28,28,.7); }
+.text-danger-soft:hover { color: var(--danger); }

@@ -73,6 +73,8 @@ function request_is_api(): bool
     return str_contains($accept, 'application/json') || request_is_ajax();
 }
 
+// request_ip() moved to core/security.php
+
 function request_header(string $key, string $default = ''): string
 {
     $key = 'HTTP_' . strtoupper(str_replace('-', '_', $key));

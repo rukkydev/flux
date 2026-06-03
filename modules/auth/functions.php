@@ -31,13 +31,9 @@ function auth_attempt(string $email, string $password, bool $remember = false): 
 
 function auth_login(array $user, bool $remember = false): void
 {
-    // Fully destroy old session before creating new one (fix #2)
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_unset();
-        session_destroy();
-    }
+    session_reset_flux();
 
-    session_start_flux();
+    // Regenerate ID to prevent session fixation
     session_regenerate_id(true);
 
     session_set('auth.id',    $user['id']);
@@ -70,7 +66,7 @@ function auth_logout(): void
 {
     $id = auth_id();
 
-    if ($id && !is_cli()) {
+    if ($id && auth_type() === 'user' && !is_cli()) {
         db_update('users', $id, ['remember_token' => null]);
     }
 
@@ -134,19 +130,29 @@ function auth_validate_session(): void
     if (!config('security.session.validate_user_agent', true)) return;
 
     $stored  = session_get('_ua_hash');
+
+    // No UA hash stored — old session format, just bind it now
+    if (!$stored) {
+        session_set('_ua_hash', hash('sha256', $_SERVER['HTTP_USER_AGENT'] ?? ''));
+        return;
+    }
+
     $current = hash('sha256', $_SERVER['HTTP_USER_AGENT'] ?? '');
 
-    if ($stored && !hash_equals($stored, $current)) {
+    if (!hash_equals($stored, $current)) {
+        $isAdmin = (auth_type() === 'admin');
+
         log_warning('Possible session hijack detected', [
             'user_id' => auth_id(),
             'ip'      => request_ip(),
         ]);
         session_destroy_flux();
+
         if (request_is_api()) {
             response_unauthorized('Session invalid. Please login again.');
         }
         flash('error', 'Your session has expired. Please login again.');
-        redirect(url('/login'));
+        redirect($isAdmin ? url('/admin/login') : url('/login'));
     }
 }
 
@@ -186,12 +192,8 @@ function admin_attempt(string $email, string $password): bool
 
 function admin_login(array $admin): void
 {
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_unset();
-        session_destroy();
-    }
+    session_reset_flux();
 
-    session_start_flux();
     session_regenerate_id(true);
 
     session_set('auth.id',    $admin['id']);

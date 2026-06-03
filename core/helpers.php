@@ -208,6 +208,10 @@ function dump(mixed ...$vars): void
 
 function abort(int $code = 404, string $message = ''): never
 {
+    if ($code >= 500 && is_debug()) {
+        throw new \RuntimeException($message ?: "HTTP {$code}");
+    }
+
     http_response_code($code);
 
     $errorPage = base_path("pages/errors/{$code}.php");
@@ -230,10 +234,21 @@ function e(string $value): string
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+// csrf_token() and csrf_field() moved to core/security.php
+
+
 // ── Flash / Session Helpers ───────────────
 
 function flash(string $key, mixed $value = null): mixed
 {
+    if (is_cli()) {
+        return null;
+    }
+
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start_flux();
+    }
+
     if ($value !== null) {
         $_SESSION['_flash'][$key] = $value;
         return null;
@@ -281,6 +296,13 @@ function redirect(string $path, int $status = 302): never
         header("Location: {$path}", true, $status);
         exit;
     }
+
+    $base = base_url_path();
+    if ($base !== '' && ($path === $base || str_starts_with($path, $base . '/'))) {
+        header("Location: {$path}", true, $status);
+        exit;
+    }
+
     // Internal path — always go through url() so subfolder is included
     $location = url($path);
     header("Location: {$location}", true, $status);

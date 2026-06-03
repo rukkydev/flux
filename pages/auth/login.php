@@ -51,7 +51,7 @@ $errors = validation_errors();
 
         <?php partial('alerts', ['errors' => $errors]) ?>
 
-        <form method="POST" action="<?php url('/login') ?>">
+        <form method="POST" action="<?= url('/login') ?>">
             <?= csrf_field() ?>
 
             <div class="mb-3">
@@ -72,7 +72,7 @@ $errors = validation_errors();
             <div class="mb-3">
                 <div class="d-flex justify-content-between">
                     <label class="form-label fw-medium">Password</label>
-                    <a href="/forgot-password" class="small text-muted">Forgot password?</a>
+                    <a href="<?= url('/forgot-password') ?>" class="small text-muted">Forgot password?</a>
                 </div>
                 <input
                     type="password"

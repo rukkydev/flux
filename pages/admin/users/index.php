@@ -36,7 +36,6 @@ $results = $search ? user_search($search, $page) : user_all($page);
                 <tr>
                     <th>Name</th>
                     <th>Email</th>
-                    <th>Role</th>
                     <th>Joined</th>
                     <th>Last Login</th>
                     <th></th>
@@ -47,7 +46,6 @@ $results = $search ? user_search($search, $page) : user_all($page);
                 <tr>
                     <td class="fw-medium"><?= e($user['name']) ?></td>
                     <td class="text-muted"><?= e($user['email']) ?></td>
-                    <td><span class="badge bg-primary"><?= e($user['role']) ?></span></td>
                     <td class="text-muted small"><?= date('M d Y', strtotime($user['created_at'])) ?></td>
                     <td class="text-muted small"><?= $user['last_login_at'] ? date('M d Y', strtotime($user['last_login_at'])) : '—' ?></td>
                     <td class="text-end">

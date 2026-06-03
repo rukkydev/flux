@@ -278,6 +278,17 @@ function config_cache_load(): bool
 
     if (!file_exists($path)) return false;
 
+    if (env('APP_DEBUG', false) || env('APP_ENV', 'production') === 'local') {
+        return false;
+    }
+
+    $cacheTime = filemtime($path) ?: 0;
+    foreach (glob(config_path('*.php')) ?: [] as $configFile) {
+        if ((filemtime($configFile) ?: 0) > $cacheTime) {
+            return false;
+        }
+    }
+
     $_FLUX_CONFIG = require $path;
     return true;
 }

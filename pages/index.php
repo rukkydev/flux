@@ -11,7 +11,7 @@ layout('app');
     <h1>The PHP Framework Built<br>for <span>Real Work</span></h1>
     <p class="lead">Scalable. Procedural. Enterprise-ready.</p>
     <div class="d-flex gap-2 justify-content-center mt-4">
-        <a href="/login" class="btn btn-dark btn-lg">Get Started</a>
+        <a href="<?= url('/login') ?>" class="btn btn-dark btn-lg">Get Started</a>
         <a href="https://github.com/fluxphp/fluxphp" class="btn btn-outline-secondary btn-lg">GitHub</a>
     </div>
 </div>

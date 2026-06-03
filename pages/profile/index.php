@@ -11,6 +11,13 @@ layout('app');
 
 $user = auth_user();
 
+// Guard: if user not found despite being logged in, clear session
+if (!$user) {
+    auth_logout();
+    flash('error', 'Session expired. Please log in again.');
+    redirect(url('/login'));
+}
+
 // Handle profile update
 if (request_is('POST') && request('_action') === 'profile') {
     $data   = request_only(['name', 'email']);
@@ -36,7 +43,7 @@ if (request_is('POST') && request('_action') === 'profile') {
     session_set('auth.email', $data['email']);
 
     flash('success', 'Profile updated.');
-    redirect('/profile');
+    redirect(url('/profile'));
 }
 
 // Handle password change
@@ -59,7 +66,7 @@ if (request_is('POST') && request('_action') === 'password') {
 
     user_update($user['id'], ['password' => $data['password']]);
     flash('success', 'Password changed successfully.');
-    redirect('/profile');
+    redirect(url('/profile'));
 }
 
 $errors = validation_errors();
@@ -68,71 +75,75 @@ $errors = validation_errors();
 <div class="row g-4">
     <!-- Profile info -->
     <div class="col-lg-6">
-        <?php component('card', ['title' => 'Profile Information']) ?>
-        <?php slot('default') ?>
-        <?php partial('alerts', ['errors' => $errors]) ?>
-        <form method="POST">
-            <?= csrf_field() ?>
-            <input type="hidden" name="_action" value="profile">
+        <div class="card">
+            <div class="card-header fw-semibold">Profile Information</div>
+            <div class="card-body">
+                <?php partial('alerts', ['errors' => $errors]) ?>
+                <form method="POST">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="_action" value="profile">
 
-            <div class="mb-3">
-                <label class="form-label">Full name</label>
-                <input type="text" name="name"
-                       class="form-control <?= error_class('name') ?>"
-                       value="<?= e(old('name', $user['name'])) ?>">
-                <?php if (has_error('name')): ?>
-                    <div class="invalid-feedback"><?= e(validation_error('name')) ?></div>
-                <?php endif ?>
+                    <div class="mb-3">
+                        <label class="form-label">Full name</label>
+                        <input type="text" name="name"
+                               class="form-control <?= error_class('name') ?>"
+                               value="<?= e(old('name', $user['name'])) ?>">
+                        <?php if (has_error('name')): ?>
+                            <div class="invalid-feedback"><?= e(validation_error('name')) ?></div>
+                        <?php endif ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email address</label>
+                        <input type="email" name="email"
+                               class="form-control <?= error_class('email') ?>"
+                               value="<?= e(old('email', $user['email'])) ?>">
+                        <?php if (has_error('email')): ?>
+                            <div class="invalid-feedback"><?= e(validation_error('email')) ?></div>
+                        <?php endif ?>
+                    </div>
+
+                    <button class="btn btn-dark">Save changes</button>
+                </form>
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">Email address</label>
-                <input type="email" name="email"
-                       class="form-control <?= error_class('email') ?>"
-                       value="<?= e(old('email', $user['email'])) ?>">
-                <?php if (has_error('email')): ?>
-                    <div class="invalid-feedback"><?= e(validation_error('email')) ?></div>
-                <?php endif ?>
-            </div>
-
-            <button class="btn btn-dark">Save changes</button>
-        </form>
-        <?php end_slot() ?>
+        </div>
     </div>
 
     <!-- Change password -->
     <div class="col-lg-6">
-        <?php component('card', ['title' => 'Change Password']) ?>
-        <?php slot('default') ?>
-        <form method="POST">
-            <?= csrf_field() ?>
-            <input type="hidden" name="_action" value="password">
+        <div class="card">
+            <div class="card-header fw-semibold">Change Password</div>
+            <div class="card-body">
+                <form method="POST">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="_action" value="password">
 
-            <div class="mb-3">
-                <label class="form-label">Current password</label>
-                <input type="password" name="current_password"
-                       class="form-control <?= error_class('current_password') ?>">
-                <?php if (has_error('current_password')): ?>
-                    <div class="invalid-feedback"><?= e(validation_error('current_password')) ?></div>
-                <?php endif ?>
+                    <div class="mb-3">
+                        <label class="form-label">Current password</label>
+                        <input type="password" name="current_password"
+                               class="form-control <?= error_class('current_password') ?>">
+                        <?php if (has_error('current_password')): ?>
+                            <div class="invalid-feedback"><?= e(validation_error('current_password')) ?></div>
+                        <?php endif ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">New password</label>
+                        <input type="password" name="password"
+                               class="form-control <?= error_class('password') ?>">
+                        <?php if (has_error('password')): ?>
+                            <div class="invalid-feedback"><?= e(validation_error('password')) ?></div>
+                        <?php endif ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Confirm new password</label>
+                        <input type="password" name="password_confirmation" class="form-control">
+                    </div>
+
+                    <button class="btn btn-dark">Update password</button>
+                </form>
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">New password</label>
-                <input type="password" name="password"
-                       class="form-control <?= error_class('password') ?>">
-                <?php if (has_error('password')): ?>
-                    <div class="invalid-feedback"><?= e(validation_error('password')) ?></div>
-                <?php endif ?>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Confirm new password</label>
-                <input type="password" name="password_confirmation" class="form-control">
-            </div>
-
-            <button class="btn btn-dark">Update password</button>
-        </form>
-        <?php end_slot() ?>
+        </div>
     </div>
 </div>

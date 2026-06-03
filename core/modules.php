@@ -235,7 +235,14 @@ function event_dispatch(string $event, array $payload = []): void
         } catch (\Throwable $e) {
             log_error("Event listener failed [{$event}]", [
                 'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
             ]);
+            // In debug mode — re-throw so the error page shows the real cause
+            // In production — swallow so one bad listener doesn't kill the request
+            if (is_debug()) {
+                throw $e;
+            }
         }
     }
 

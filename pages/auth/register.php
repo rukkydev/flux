@@ -50,7 +50,7 @@ $errors = validation_errors();
 
         <?php partial('alerts', ['errors' => $errors]) ?>
 
-        <form method="POST" action="<?php url('/register') ?>">
+        <form method="POST" action="<?= url('/register') ?>">
             <?= csrf_field() ?>
 
             <div class="mb-3">
@@ -111,5 +111,5 @@ $errors = validation_errors();
 </div>
 
 <p class="text-center text-muted small mt-3">
-    Already have an account? <a href="/login" class="text-dark fw-medium">Sign in</a>
+    Already have an account? <a href="<?= url('/login') ?>" class="text-dark fw-medium">Sign in</a>
 </p>

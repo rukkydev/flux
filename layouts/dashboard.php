@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e(page_title()) ?></title>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Mono&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -17,25 +16,17 @@
 
 <div class="d-flex" id="flux-dashboard">
 
-    <!-- Sidebar -->
-    <nav class="flux-sidebar d-flex flex-column p-3">
-        <a href="/" class="navbar-brand fw-bold text-white mb-4 px-2">
-            <?= e(config('app.name', 'FluxPHP')) ?>
-        </a>
-
-        <?php yield_section('sidebar', '') ?>
-
-        <?php if (!has_section('sidebar')): ?>
-            <?php component('sidebar') ?>
-        <?php endif ?>
+    <!-- Sidebar — injected via section('sidebar') in page file -->
+    <nav class="flux-sidebar d-flex flex-column p-0">
+        <?php yield_section('sidebar') ?>
     </nav>
 
     <!-- Main content -->
-    <div class="flex-grow-1 d-flex flex-column">
+    <div class="flex-grow-1 d-flex flex-column overflow-hidden">
 
         <?php component('topbar') ?>
 
-        <main class="p-4 flex-grow-1">
+        <main class="p-4 flex-grow-1 overflow-auto">
             <?php component('flash') ?>
             <?php yield_content() ?>
         </main>
