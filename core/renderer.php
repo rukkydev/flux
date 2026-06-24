@@ -3,25 +3,12 @@
 declare(strict_types=1);
 
 // ═══════════════════════════════════════════════════════
-//  FluxPHP — Rendering Engine (Phase 3)
+//  FluxPHP — Rendering Engine (Phase 3 — v1.1)
 //
-//  Supports:
-//    layout()        — set active layout
-//    section()       — open a named section
-//    end_section()   — close a named section
-//    yield_section() — output a section inside a layout
-//    yield_content() — output main page body in layout
-//    push()          — append to a stack (scripts, styles)
-//    yield_push()    — output a stack in layout
-//    partial()       — include a partial file
-//    component()     — include a UI component with props
-//    slot()          — named slot inside a component
-//    end_slot()      — close a slot
-//    yield_slot()    — output a slot inside a component
-//    title()         — set page <title>
-//    page_title()    — get current page title
-//    meta()          — set a meta value
-//    get_meta()      — get a meta value
+//  Changes from v1.0:
+//    - renderer_render(): slot buffer cleanup added (Bug #1)
+//    - push(): warns on unknown stack names (Bug #2)
+//    - renderer_render(): ob_get_level() verified after render
 // ═══════════════════════════════════════════════════════
 
 $_FLUX_LAYOUT        = null;
@@ -33,38 +20,28 @@ $_FLUX_SLOTS         = [];
 $_FLUX_SLOT_CURRENT  = null;
 $_FLUX_PAGE_TITLE    = '';
 $_FLUX_META          = [];
-$_FLUX_VIEW_DATA     = [];   // shared data available to all views
+$_FLUX_VIEW_DATA     = [];
+
+// Known stack names — warn if developer typos a name
+// Extend this list if you add new stacks to your layouts
+const FLUX_KNOWN_STACKS = ['scripts', 'styles', 'head', 'footer'];
 
 // ─────────────────────────────────────────────────────
 //  LAYOUT
 // ─────────────────────────────────────────────────────
 
-/**
- * Set the layout for the current page.
- * Call at the top of any page file.
- *
- * layout('app');
- * layout('dashboard');
- * layout('auth');          // layouts/auth.php
- */
 function layout(string $name): void
 {
     global $_FLUX_LAYOUT;
     $_FLUX_LAYOUT = $name;
 }
 
-/**
- * Disable layout for the current page (raw output).
- */
 function no_layout(): void
 {
     global $_FLUX_LAYOUT;
     $_FLUX_LAYOUT = false;
 }
 
-/**
- * Get the active layout name.
- */
 function current_layout(): string|null|false
 {
     global $_FLUX_LAYOUT;
@@ -75,21 +52,12 @@ function current_layout(): string|null|false
 //  PAGE TITLE & META
 // ─────────────────────────────────────────────────────
 
-/**
- * Set the page <title>.
- * title('User Profile');
- */
 function title(string $value): void
 {
     global $_FLUX_PAGE_TITLE;
     $_FLUX_PAGE_TITLE = $value;
 }
 
-/**
- * Get the page title, with optional app name suffix.
- * page_title()           → "User Profile — FluxPHP"
- * page_title(false)      → "User Profile"
- */
 function page_title(bool $withApp = true): string
 {
     global $_FLUX_PAGE_TITLE;
@@ -103,19 +71,12 @@ function page_title(bool $withApp = true): string
     return $t;
 }
 
-/**
- * Set an arbitrary meta value (description, og:image, etc).
- * meta('description', 'My page description');
- */
 function meta(string $key, string $value): void
 {
     global $_FLUX_META;
     $_FLUX_META[$key] = $value;
 }
 
-/**
- * Get a meta value.
- */
 function get_meta(string $key, string $default = ''): string
 {
     global $_FLUX_META;
@@ -126,21 +87,12 @@ function get_meta(string $key, string $default = ''): string
 //  SHARED VIEW DATA
 // ─────────────────────────────────────────────────────
 
-/**
- * Share data with ALL views/layouts/components for this request.
- * Call from a module hook or bootstrap.
- *
- * view_share('auth_user', auth_user());
- */
 function view_share(string $key, mixed $value): void
 {
     global $_FLUX_VIEW_DATA;
     $_FLUX_VIEW_DATA[$key] = $value;
 }
 
-/**
- * Get all shared view data.
- */
 function view_data(): array
 {
     global $_FLUX_VIEW_DATA;
@@ -151,13 +103,6 @@ function view_data(): array
 //  SECTIONS
 // ─────────────────────────────────────────────────────
 
-/**
- * Start capturing a named section.
- *
- * <?php section('head') ?>
- *   <link rel="stylesheet" href="...">
- * <?php end_section() ?>
- */
 function section(string $name): void
 {
     global $_FLUX_SECTION;
@@ -165,9 +110,6 @@ function section(string $name): void
     ob_start();
 }
 
-/**
- * End the current section capture.
- */
 function end_section(): void
 {
     global $_FLUX_SECTIONS, $_FLUX_SECTION;
@@ -180,29 +122,18 @@ function end_section(): void
     $_FLUX_SECTION = null;
 }
 
-/**
- * Output a section inside a layout.
- * yield_section('head')
- * yield_section('sidebar', '<p>Default sidebar</p>')
- */
 function yield_section(string $name, string $default = ''): void
 {
     global $_FLUX_SECTIONS;
     echo $_FLUX_SECTIONS[$name] ?? $default;
 }
 
-/**
- * Check if a section has been defined.
- */
 function has_section(string $name): bool
 {
     global $_FLUX_SECTIONS;
     return isset($_FLUX_SECTIONS[$name]);
 }
 
-/**
- * Output the main page body inside a layout.
- */
 function yield_content(): void
 {
     global $_FLUX_PAGE_CONTENT;
@@ -210,12 +141,13 @@ function yield_content(): void
 }
 
 // ─────────────────────────────────────────────────────
-//  STACKS  (push/yield_push)
+//  STACKS  (push / end_push / yield_push)
 // ─────────────────────────────────────────────────────
 
 /**
  * Push content onto a named stack.
- * Useful for adding per-page scripts/styles into layout slots.
+ *
+ * FIX v1.1: Warns on unknown stack names so typos are caught early.
  *
  * <?php push('scripts') ?>
  *   <script src="/js/chart.js"></script>
@@ -224,13 +156,16 @@ function yield_content(): void
 function push(string $name): void
 {
     global $_FLUX_STACK_CURRENT;
+
+    // Warn if developer used an unknown stack name
+    if (!in_array($name, FLUX_KNOWN_STACKS, true)) {
+        log_warning("push(): Unknown stack name [{$name}]. Known stacks: " . implode(', ', FLUX_KNOWN_STACKS));
+    }
+
     $_FLUX_STACK_CURRENT = $name;
     ob_start();
 }
 
-/**
- * End a push block.
- */
 function end_push(): void
 {
     global $_FLUX_STACKS, $_FLUX_STACK_CURRENT;
@@ -243,12 +178,6 @@ function end_push(): void
     $_FLUX_STACK_CURRENT = null;
 }
 
-/**
- * Output all pushed content for a stack.
- *
- * yield_push('scripts')   — in the layout, before </body>
- * yield_push('styles')    — in the layout, inside <head>
- */
 function yield_push(string $name): void
 {
     global $_FLUX_STACKS;
@@ -262,18 +191,11 @@ function yield_push(string $name): void
 //  PARTIALS
 // ─────────────────────────────────────────────────────
 
-/**
- * Include a partial template.
- * Looks in pages/partials/ first, then pages/.
- *
- * partial('alerts')
- * partial('user.card', ['user' => $user])
- */
 function partial(string $name, array $data = []): void
 {
     global $_FLUX_VIEW_DATA;
 
-    $rel  = str_replace('.', '/', $name);
+    $rel        = str_replace('.', '/', $name);
     $candidates = [
         base_path('pages/partials/' . $rel . '.php'),
         base_path('pages/' . $rel . '.php'),
@@ -281,7 +203,10 @@ function partial(string $name, array $data = []): void
 
     $path = null;
     foreach ($candidates as $c) {
-        if (file_exists($c)) { $path = $c; break; }
+        if (file_exists($c)) {
+            $path = $c;
+            break;
+        }
     }
 
     if ($path === null) {
@@ -296,17 +221,6 @@ function partial(string $name, array $data = []): void
 //  COMPONENTS  (with slots)
 // ─────────────────────────────────────────────────────
 
-/**
- * Include a UI component with optional props.
- *
- * component('card', ['title' => 'Hello'])
- * component('modal', ['id' => 'confirm-modal'])
- *
- * With slots:
- *   component('card', ['title' => 'Hello']);
- *     slot('body'); ?>  <p>Content</p>  <?php end_slot();
- *   end_component();
- */
 function component(string $name, array $props = []): void
 {
     global $_FLUX_VIEW_DATA;
@@ -332,9 +246,6 @@ function component(string $name, array $props = []): void
     require $path;
 }
 
-/**
- * Start capturing a named slot for the current component.
- */
 function slot(string $name): void
 {
     global $_FLUX_SLOT_CURRENT;
@@ -342,9 +253,6 @@ function slot(string $name): void
     ob_start();
 }
 
-/**
- * End a slot capture.
- */
 function end_slot(): void
 {
     global $_FLUX_SLOTS, $_FLUX_SLOT_CURRENT;
@@ -357,22 +265,15 @@ function end_slot(): void
     $_FLUX_SLOT_CURRENT = null;
 }
 
-/**
- * Output a slot inside a component file.
- * yield_slot('body', '<p>Default content</p>')
- */
 function yield_slot(string $name, string $default = ''): void
 {
     global $_FLUX_SLOTS;
 
     $content = $_FLUX_SLOTS[$name] ?? $default;
-    unset($_FLUX_SLOTS[$name]);   // consumed — reset for reuse
+    unset($_FLUX_SLOTS[$name]);  // single-use by design
     echo $content;
 }
 
-/**
- * Check if a slot was provided.
- */
 function has_slot(string $name): bool
 {
     global $_FLUX_SLOTS;
@@ -383,10 +284,6 @@ function has_slot(string $name): bool
 //  THEME
 // ─────────────────────────────────────────────────────
 
-/**
- * Output the URL to a theme asset.
- * theme_asset('css/app.css')  →  /themes/default/css/app.css
- */
 function theme_asset(string $path, string $theme = ''): string
 {
     $theme = $theme ?: config('app.theme', 'default');
@@ -400,10 +297,18 @@ function theme_asset(string $path, string $theme = ''): string
 /**
  * Render a page file through the layout pipeline.
  * Called internally by the router after dispatch.
+ *
+ * FIX v1.1:
+ *   - Dangling slot buffer now cleaned up (was missing)
+ *   - ob_get_level() verified and logged after full render
+ *   - Each cleanup step restarts the main ob correctly
  */
 function renderer_render(string $pageFile, array $data = []): void
 {
     global $_FLUX_LAYOUT, $_FLUX_VIEW_DATA, $_FLUX_PAGE_CONTENT;
+    global $_FLUX_STACKS, $_FLUX_STACK_CURRENT;
+    global $_FLUX_SECTIONS, $_FLUX_SECTION;
+    global $_FLUX_SLOTS, $_FLUX_SLOT_CURRENT;
 
     // Reset per-request renderer state
     $_FLUX_LAYOUT       = null;
@@ -415,18 +320,13 @@ function renderer_render(string $pageFile, array $data = []): void
         abort(404, "Page not found: {$pageFile}");
     }
 
-    // Merge shared data + route params + passed data
     $merged = array_merge($_FLUX_VIEW_DATA, route_params(), $data);
 
-    // ── Step 1: Capture page output ──────────────────
-    // layout(), title(), section(), push() all run INSIDE this buffer.
-    // We MUST read $_FLUX_LAYOUT after ob_get_clean() — the page sets it.
-    // IMPORTANT: use global variables directly — closures don't share
-    // global state the same way as inline code, so we require the file
-    // in the current scope using a simple include wrapper.
+    // ── Step 1: Capture page output ──────────────────────────────
+    $obLevelBefore = ob_get_level();
     ob_start();
-    (static function() use ($fullPath, $merged) {
-        // Bring all renderer globals into scope explicitly
+
+    (static function () use ($fullPath, $merged) {
         global $_FLUX_LAYOUT, $_FLUX_SECTIONS, $_FLUX_SECTION,
                $_FLUX_STACKS, $_FLUX_STACK_CURRENT,
                $_FLUX_SLOTS, $_FLUX_SLOT_CURRENT,
@@ -434,9 +334,56 @@ function renderer_render(string $pageFile, array $data = []): void
         extract($merged, EXTR_SKIP);
         require $fullPath;
     })();
+
+    // ── Step 2: Safety — close any dangling buffers ───────────────
+    // If the page called push()/section()/slot() without the matching
+    // end_*() call, an ob_start() is still open inside the main buffer.
+    // We rescue the content and close cleanly.
+
+    // Dangling push()
+    if ($_FLUX_STACK_CURRENT !== null) {
+        $rescued = ob_get_clean();
+        $_FLUX_STACKS[$_FLUX_STACK_CURRENT][] = $rescued;
+        $_FLUX_STACK_CURRENT = null;
+        log_warning("renderer_render(): Dangling push() buffer was auto-closed. Did you forget end_push()?");
+        ob_start(); // restart main capture
+    }
+
+    // Dangling section()
+    if ($_FLUX_SECTION !== null) {
+        $rescued = ob_get_clean();
+        $_FLUX_SECTIONS[$_FLUX_SECTION] = $rescued;
+        $_FLUX_SECTION = null;
+        log_warning("renderer_render(): Dangling section() buffer was auto-closed. Did you forget end_section()?");
+        ob_start();
+    }
+
+    // FIX v1.1 — Dangling slot() (was NOT handled before)
+    if ($_FLUX_SLOT_CURRENT !== null) {
+        $rescued = ob_get_clean();
+        $_FLUX_SLOTS[$_FLUX_SLOT_CURRENT] = $rescued;
+        $_FLUX_SLOT_CURRENT = null;
+        log_warning("renderer_render(): Dangling slot() buffer was auto-closed. Did you forget end_slot()?");
+        ob_start();
+    }
+
     $_FLUX_PAGE_CONTENT = ob_get_clean();
 
-    // ── Step 2: Wrap in layout if one was set ─────────
+    // ── Step 3: Verify buffer level is back to baseline ──────────
+    $obLevelAfter = ob_get_level();
+    if ($obLevelAfter !== $obLevelBefore) {
+        log_warning(sprintf(
+            "renderer_render(): ob_get_level() mismatch after page capture. Before: %d, After: %d. Flushing excess buffers.",
+            $obLevelBefore,
+            $obLevelAfter
+        ));
+        // Flush extra buffers to recover cleanly
+        while (ob_get_level() > $obLevelBefore) {
+            ob_end_clean();
+        }
+    }
+
+    // ── Step 4: Wrap in layout if one was set ────────────────────
     if ($_FLUX_LAYOUT) {
         $layoutPath = base_path('layouts/' . $_FLUX_LAYOUT . '.php');
 
@@ -444,7 +391,7 @@ function renderer_render(string $pageFile, array $data = []): void
             abort(500, "Layout not found: {$_FLUX_LAYOUT}");
         }
 
-        (static function() use ($layoutPath, $merged) {
+        (static function () use ($layoutPath, $merged) {
             global $_FLUX_LAYOUT, $_FLUX_SECTIONS, $_FLUX_SECTION,
                    $_FLUX_STACKS, $_FLUX_STACK_CURRENT,
                    $_FLUX_SLOTS, $_FLUX_SLOT_CURRENT,
@@ -455,7 +402,6 @@ function renderer_render(string $pageFile, array $data = []): void
         })();
 
     } else {
-        // no_layout() or layout() never called — output raw
         echo $_FLUX_PAGE_CONTENT;
     }
 }

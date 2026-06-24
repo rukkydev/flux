@@ -61,16 +61,6 @@ $activity = db_table('activity_logs')
                         <input type="email" name="email" class="form-control <?= error_class('email') ?>"
                                value="<?= e(old('email', $user['email'])) ?>">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Role</label>
-                        <select name="role" class="form-select">
-                            <?php foreach (['user', 'admin', 'moderator'] as $role): ?>
-                                <option value="<?= $role ?>" <?= $user['role'] === $role ? 'selected' : '' ?>>
-                                    <?= ucfirst($role) ?>
-                                </option>
-                            <?php endforeach ?>
-                        </select>
-                    </div>
                     <button class="btn btn-dark">Save Changes</button>
                 </form>
             </div>
